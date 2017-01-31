@@ -40,8 +40,7 @@ def next_batch(df, i=None):
         end = BATCH_SIZE * (i + 1)
     result = df[start:end]
     if "Survived" in result:
-        batch_ys = pd.get_dummies(result['Survived'].values).as_matrix()
-        result.drop('Survived', axis=1, inplace=True)
+        batch_ys = pd.get_dummies(result.pop('Survived').values).as_matrix()
         batch_xs = result.as_matrix()
         return batch_xs, batch_ys
     else:
@@ -89,16 +88,16 @@ with tf.name_scope('Accuracy'):
     acc = tf.equal(tf.argmax(pred, 1), tf.argmax(y, 1))
     acc = tf.reduce_mean(tf.cast(acc, tf.float32))
 
-init = tf.initialize_all_variables()
+init = tf.global_variables_initializer()
 
-tf.scalar_summary("loss", cost)
-tf.scalar_summary("accuracy", acc)
-merged_summary = tf.merge_all_summaries()
+tf.summary.scalar("loss", cost)
+tf.summary.scalar("accuracy", acc)
+merged_summary = tf.summary.merge_all()
 
 with tf.Session() as sess:
     sess.run(init)
 
-    log_writer = tf.train.SummaryWriter(LOGS_PATH, graph=tf.get_default_graph())
+    log_writer = tf.summary.FileWriter(LOGS_PATH, graph=tf.get_default_graph())
     training_dataset_size = training_dataset.shape[0]
     for epoch in range(EPOCH_NUM):
         avg_cost = 0.
@@ -116,7 +115,7 @@ with tf.Session() as sess:
     print("Accuracy:", acc.eval({x: test_x, y: test_y}))
 
     test_df = preprocess_data(TEST_PATH, is_test=True)
-    indexes = test_narray.index.values
+    indexes = test_df.index.values
     test_narray = next_batch(test_df)
     feed_dict = {x: test_narray}
     predict_proba = pred.eval(feed_dict)
